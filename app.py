@@ -2,106 +2,124 @@ import streamlit as st
 import pandas as pd
 import os
 
-st.set_page_config(page_title="Keuangan Bulanan", layout="wide")
+st.set_page_config(page_title="Keuangan Harian", layout="wide")
 
-# === FILE DATA ===
-file_income = "pemasukan.csv"
-file_expense = "pengeluaran.csv"
+# ============ STYLE =============
+st.markdown("""
+    <style>
+        .title {
+            font-size: 38px; font-weight: 900; text-align:center; margin-bottom: 10px;
+            background: -webkit-linear-gradient(#ff7eb9, #ff65a3, #7afcff);
+            -webkit-background-clip: text; color: transparent;
+        }
+        .card {
+            padding: 18px; border-radius: 14px; color: white; font-weight: bold; 
+            text-align:center; box-shadow: 0px 2px 12px rgba(0,0,0,0.15);
+        }
+        .income { background: linear-gradient(135deg, #5ee7df, #b490ca); }
+        .expense { background: linear-gradient(135deg, #ff9a9e, #f6416c); }
+        .summary { background: linear-gradient(135deg, #a1c4fd, #c2e9fb); color:#222; }
+    </style>
+""", unsafe_allow_html=True)
 
-# === LOAD DATA ===
-if os.path.exists(file_income):
-    income = pd.read_csv(file_income)
-else:
-    income = pd.DataFrame(columns=["Tanggal", "Sumber", "Jumlah (Rp)"])
+# ============ FILE DATA ==========
+income_file = "pemasukan.csv"
+expense_file = "pengeluaran.csv"
 
-if os.path.exists(file_expense):
-    expense = pd.read_csv(file_expense)
-else:
-    expense = pd.DataFrame(columns=["Tanggal", "Pengeluaran", "Jumlah (Rp)"])
+income_df = pd.read_csv(income_file) if os.path.exists(income_file) else pd.DataFrame(columns=["Tanggal", "Sumber", "Jumlah (Rp)"])
+expense_df = pd.read_csv(expense_file) if os.path.exists(expense_file) else pd.DataFrame(columns=["Tanggal", "Nama", "Kategori", "Jumlah (Rp)"])
 
-# Pastikan tanggal berupa angka
-for df in [income, expense]:
-    if len(df) > 0:
-        df["Tanggal"] = df["Tanggal"].astype(int)
-        df.sort_values(by="Tanggal", inplace=True)
+st.markdown("<p class='title'>📊 Aplikasi Keuangan Harian Estetik</p>", unsafe_allow_html=True)
 
-st.title("📊 Aplikasi Pencatatan Keuangan Harian")
+# ============ INPUT PEMASUKAN ==========
+st.header("💰 Input Pemasukan")
 
-# ==============================
-# INPUT PEMASUKAN
-# ==============================
-st.subheader("💰 Input Pemasukan")
+col1, col2, col3 = st.columns(3)
+with col1:
+    t_in = st.number_input("Tanggal:", 1, 31, 1)
+with col2:
+    sumber = st.text_input("Sumber pemasukan:")
+with col3:
+    j_in = st.number_input("Jumlah (Rp):", min_value=0.0, step=1000.0, format="%.2f")
 
-with st.form("input_pemasukan"):
-    tgl_in = st.text_input("Tanggal pemasukan:")
-    sumber = st.text_input("Sumber pemasukan (misal: gaji, freelance, transfer):")
-    jml_in = st.number_input("Jumlah (Rp):", min_value=0.0, step=1000.0)
-    add_in = st.form_submit_button("Tambahkan Pemasukan")
+if st.button("➕ Tambah Pemasukan"):
+    income_df.loc[len(income_df)] = [t_in, sumber, j_in]
+    income_df.to_csv(income_file, index=False)
+    st.success("✅ Pemasukan ditambahkan!")
 
-if add_in and tgl_in and sumber and jml_in > 0:
-    income.loc[len(income)] = [tgl_in, sumber, jml_in]
-    income.to_csv(file_income, index=False)
-    st.success("✅ Pemasukan berhasil ditambahkan!")
-
-st.dataframe(income, use_container_width=True)
 
 # Hapus pemasukan
-if len(income) > 0:
-    idx_in = st.selectbox("Hapus pemasukan:", income.index, format_func=lambda x: f"{income.loc[x,'Tanggal']} - {income.loc[x,'Sumber']} (Rp {income.loc[x,'Jumlah (Rp)']:,.0f})")
-    if st.button("Hapus pemasukan ini"):
-        income = income.drop(idx_in)
-        income.to_csv(file_income, index=False)
-        st.success("✅ Pemasukan dihapus!")
+if len(income_df) > 0:
+    remove_in = st.selectbox("🧹 Hapus pemasukan:", income_df.index)
+    if st.button("Hapus Data Pemasukan"):
+        income_df = income_df.drop(remove_in)
+        income_df.to_csv(income_file, index=False)
+        st.success("✅ Pemasukan berhasil dihapus!")
 
-# ==============================
-# INPUT PENGELUARAN
-# ==============================
-st.subheader("📝 Input Pengeluaran")
 
-with st.form("input_pengeluaran"):
-    tgl_out = st.text_input("Tanggal pengeluaran:")
+# ============ INPUT PENGELUARAN ==========
+st.header("📝 Input Pengeluaran")
+
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    t_out = st.number_input("Tanggal:", 1, 31, 1, key="tgl_out")
+with col2:
     nama_out = st.text_input("Nama pengeluaran:")
-    jml_out = st.number_input("Jumlah pengeluaran (Rp):", min_value=0.0, step=1000.0)
-    add_out = st.form_submit_button("Tambahkan Pengeluaran")
+with col3:
+    kategori = st.text_input("Kategori (bebas):")
+with col4:
+    j_out = st.number_input("Jumlah (Rp):", min_value=0.0, step=1000.0, format="%.2f", key="j_out")
 
-if add_out and tgl_out and nama_out and jml_out > 0:
-    expense.loc[len(expense)] = [tgl_out, nama_out, jml_out]
-    expense.to_csv(file_expense, index=False)
-    st.success("✅ Pengeluaran berhasil ditambahkan!")
+if st.button("➖ Tambah Pengeluaran"):
+    expense_df.loc[len(expense_df)] = [t_out, nama_out, kategori, j_out]
+    expense_df.to_csv(expense_file, index=False)
+    st.success("✅ Pengeluaran ditambahkan!")
 
-st.dataframe(expense, use_container_width=True)
+if len(expense_df) > 0:
+    remove_out = st.selectbox("🧹 Hapus pengeluaran:", expense_df.index)
+    if st.button("Hapus Data Pengeluaran"):
+        expense_df = expense_df.drop(remove_out)
+        expense_df.to_csv(expense_file, index=False)
+        st.success("✅ Pengeluaran berhasil dihapus!")
 
-# Hapus pengeluaran
-if len(expense) > 0:
-    idx_out = st.selectbox("Hapus pengeluaran:", expense.index, format_func=lambda x: f"{expense.loc[x,'Tanggal']} - {expense.loc[x,'Pengeluaran']} (Rp {expense.loc[x,'Jumlah (Rp)']:,.0f})")
-    if st.button("Hapus pengeluaran ini"):
-        expense = expense.drop(idx_out)
-        expense.to_csv(file_expense, index=False)
-        st.success("✅ Pengeluaran dihapus!")
 
-# ==============================
-# RINGKASAN
-# ==============================
-if len(income) > 0 and len(expense) > 0:
-    total_in = income["Jumlah (Rp)"].sum()
-    total_out = expense["Jumlah (Rp)"].sum()
-    persentase = (total_out / total_in) * 100
+# ============ RINGKASAN =============
+st.header("📌 Ringkasan Bulanan")
 
-    biggest = expense.loc[expense["Jumlah (Rp)"].idxmax()]
+total_in = income_df["Jumlah (Rp)"].sum()
+total_out = expense_df["Jumlah (Rp)"].sum()
 
-    st.subheader("📌 Ringkasan Bulanan")
-    st.write(f"**Total Pemasukan:** Rp {total_in:,.0f}")
-    st.write(f"**Total Pengeluaran:** Rp {total_out:,.0f}")
-    st.write(f"**Pengeluaran Terbesar:** {biggest['Pengeluaran']} (Tanggal {biggest['Tanggal']}) = Rp {biggest['Jumlah (Rp)']:,.0f}")
-    st.write(f"**Persentase Pengeluaran terhadap Pemasukan:** {persentase:.2f}%")
+colA, colB, colC = st.columns(3)
+with colA:
+    st.markdown(f"<div class='card income'>Total Pemasukan<br>Rp {total_in:,.0f}</div>", unsafe_allow_html=True)
+with colB:
+    st.markdown(f"<div class='card expense'>Total Pengeluaran<br>Rp {total_out:,.0f}</div>", unsafe_allow_html=True)
+with colC:
+    persen = (total_out / total_in * 100) if total_in > 0 else 0
+    st.markdown(f"<div class='card summary'>Pengeluaran vs Pemasukan<br>{persen:.2f}%</div>", unsafe_allow_html=True)
 
-    # Gabung data untuk grafik
-    g_income = income.groupby("Tanggal")["Jumlah (Rp)"].sum()
-    g_expense = expense.groupby("Tanggal")["Jumlah (Rp)"].sum()
+if len(expense_df) > 0:
+    biggest = expense_df.loc[expense_df["Jumlah (Rp)"].idxmax()]
+    st.write(f"🔺 Pengeluaran Terbesar: **{biggest['Nama']}** (Rp {biggest['Jumlah (Rp)']:,.0f}) — *Kategori:* {biggest['Kategori']}")
 
-    st.subheader("📈 Grafik Pemasukan vs Pengeluaran")
-    st.line_chart(pd.DataFrame({"Pemasukan": g_income, "Pengeluaran": g_expense}).fillna(0))
 
-else:
-    st.info("Masukkan minimal 1 pemasukan dan pengeluaran.")
+# ============ GRAFIK GARIS ==========
+st.header("📈 Grafik Pemasukan vs Pengeluaran per Tanggal")
 
+income_df["Tanggal"] = income_df["Tanggal"].astype(int)
+expense_df["Tanggal"] = expense_df["Tanggal"].astype(int)
+
+g_in = income_df.groupby("Tanggal")["Jumlah (Rp)"].sum()
+g_out = expense_df.groupby("Tanggal")["Jumlah (Rp)"].sum()
+
+index = range(1, 32)
+chart_data = pd.DataFrame({"Pemasukan": g_in.reindex(index, fill_value=0),
+                           "Pengeluaran": g_out.reindex(index, fill_value=0)})
+st.line_chart(chart_data)
+
+
+# ============ GRAFIK PIE ==========
+if len(expense_df) > 0:
+    st.header("🥧 Grafik Pengeluaran per Kategori")
+    pie = expense_df.groupby("Kategori")["Jumlah (Rp)"].sum()
+    st.bar_chart(pie)
