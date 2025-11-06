@@ -17,7 +17,7 @@ def load_data():
     except:
         pengeluaran = pd.DataFrame(columns=["Tanggal", "Nama", "Jumlah (Rp)", "Kategori"])
 
-    # ✅ Pastikan kategori selalu ada
+    # ✅ Pastikan kategori selalu ada (untuk data lama)
     if "Kategori" not in pengeluaran.columns:
         pengeluaran["Kategori"] = "Tanpa Kategori"
 
@@ -25,7 +25,7 @@ def load_data():
 
 pemasukan, pengeluaran = load_data()
 
-# ============================ SAVE FUNCTION ============================
+# ============================ SAVE ============================
 def save():
     pemasukan.to_csv("pemasukan.csv", index=False)
     pengeluaran.to_csv("pengeluaran.csv", index=False)
@@ -45,6 +45,19 @@ if submit_in and jumlah_masuk > 0:
     save()
     st.success("✅ Pemasukan berhasil ditambahkan!")
 
+# ============================ HAPUS PEMASUKAN ============================
+if len(pemasukan) > 0:
+    st.subheader("🗑️ Hapus Pemasukan")
+    list_in = list(pemasukan.index.astype(str) + " - " + pemasukan["Sumber"] + " (Rp " + pemasukan["Jumlah (Rp)"].astype(str) + ")")
+    selected_in = st.selectbox("Pilih pemasukan yang ingin dihapus:", [""] + list_in)
+    if selected_in != "":
+        if st.button("Hapus Pemasukan"):
+            idx = int(selected_in.split(" - ")[0])
+            pemasukan.drop(idx, inplace=True)
+            pemasukan.reset_index(drop=True, inplace=True)
+            save()
+            st.success("✅ Berhasil dihapus!")
+
 # ============================ INPUT PENGELUARAN ============================
 st.header("📝 Input Pengeluaran")
 with st.form("form_pengeluaran"):
@@ -59,6 +72,23 @@ if submit_out and jumlah_keluar > 0:
     save()
     st.success("✅ Pengeluaran berhasil ditambahkan!")
 
+# ============================ HAPUS PENGELUARAN ============================
+if len(pengeluaran) > 0:
+    st.subheader("🗑️ Hapus Pengeluaran")
+    list_out = list(
+        pengeluaran.index.astype(str) +
+        " - " + pengeluaran["Nama"] +
+        " (Rp " + pengeluaran["Jumlah (Rp)"].astype(str) + ")"
+    )
+    selected_out = st.selectbox("Pilih pengeluaran yang ingin dihapus:", [""] + list_out)
+    if selected_out != "":
+        if st.button("Hapus Pengeluaran"):
+            idx = int(selected_out.split(" - ")[0])
+            pengeluaran.drop(idx, inplace=True)
+            pengeluaran.reset_index(drop=True, inplace=True)
+            save()
+            st.success("✅ Berhasil dihapus!")
+
 # ============================ RINGKASAN ============================
 st.header("📌 Ringkasan Bulanan")
 
@@ -70,8 +100,10 @@ st.write(f"**Total Pemasukan:** Rp {total_in:,.0f}")
 st.write(f"**Total Pengeluaran:** Rp {total_out:,.0f}")
 st.write(f"**Persentase Pengeluaran:** {persen:.2f}%")
 
+# Pengeluaran terbesar
 if len(pengeluaran) > 0:
     biggest = pengeluaran.loc[pengeluaran["Jumlah (Rp)"].idxmax()]
+   
     st.write(f"🔺 Pengeluaran Terbesar: **{biggest['Nama']}** (Rp {biggest['Jumlah (Rp)']:,.0f}) — *Kategori:* {biggest['Kategori']}")
 
 # ============================ GRAFIK ============================
@@ -89,4 +121,5 @@ st.dataframe(pemasukan)
 
 st.subheader("📃 Data Pengeluaran")
 st.dataframe(pengeluaran)
+
 
